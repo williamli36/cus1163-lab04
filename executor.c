@@ -1,43 +1,57 @@
-#include "executor.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <string.h>
+#include "executor.h"
 
-/**
- * Execute a command using the fork-exec-wait pattern.
- *
- * 1. Fork a child process
- * 2. Child executes the target command via execvp()
- * 3. Parent waits for the child and returns its exit status
- */
-int execute_command(char *command, char **args) {
-    pid_t pid;
-    int status;
+#define MAX_INPUT 1024
+#define MAX_ARGS 64
 
-    /* TODO 1: Fork a child process */
-    pid = fork();
-    if (pid < 0) {
-        perror("fork failed");
-        return -1; // Fork error
+int main() {
+    char input[MAX_INPUT];
+    char *args[MAX_ARGS];
+    char *command;
+    int exit_status;
+
+    printf("========================================\n");
+    printf("   Simple Command Executor\n");
+    printf("========================================\n");
+    printf("Type 'exit' to quit\n\n");
+
+    while (1) {
+        printf("cmd> ");
+        fflush(stdout);
+
+        if (!fgets(input, sizeof(input), stdin)) {
+            break; 
+        }
+
+        // Remove newline at end
+        input[strcspn(input, "\n")] = 0;
+
+        // Exit command
+        if (strcmp(input, "exit") == 0) {
+            printf("Goodbye!\n");
+            break;
+        }
+
+        // Split input into args
+        int i = 0;
+        char *token = strtok(input, " ");
+        while (token != NULL && i < MAX_ARGS - 1) {
+            args[i++] = token;
+            token = strtok(NULL, " ");
+        }
+        args[i] = NULL; // NULL-terminate the array
+
+        // First token is the command
+        if (i == 0) continue; // Empty input
+        command = args[0];
+
+        // Execute the command
+        exit_status = execute_command(command, args);
+
+        printf("\nCommand '%s' completed with exit status: %d\n\n", command, exit_status);
     }
 
-    /* TODO 2: Child process - Execute the command */
-    if (pid == 0) {
-        execvp(command, args); // Replace process image
-        perror("execvp");      // Only runs if execvp fails
-        exit(1);               // Must exit, not return
-    }
-
-    /* TODO 3: Parent process - Wait for child to complete */
-    if (waitpid(pid, &status, 0) == -1) {
-        perror("waitpid failed");
-        return -1;
-    }
-
-    if (WIFEXITED(status)) {
-        return WEXITSTATUS(status); // Normal exit → return exit code
-    } else {
-        return -1; // Abnormal termination
-    }
+    return 0;
 }
